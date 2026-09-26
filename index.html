@@ -1,259 +1,328 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#0b1020" />
-  <title>AR Target Hunt</title>
-  <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; height: 100%; background: #05070d; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; overflow: hidden; }
-    body { color: #fff; }
-    #app { position: relative; width: 100%; height: 100%; min-height: 100dvh; background: radial-gradient(circle at 50% 20%, #1a2544, #05070d 65%); }
-    #camera { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #05070d; }
-    #shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 22%, transparent 74%, rgba(0,0,0,.55)); }
-
-    .hud { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; gap: 10px; justify-content: space-between; z-index: 4; pointer-events: none; }
-    .pill { background: rgba(8,12,24,.72); border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; padding: 10px 14px; min-width: 96px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
-    .pill small { display:block; opacity:.7; font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
-    .pill strong { display:block; font-size:22px; line-height:1.05; margin-top:2px; }
-
-    #playfield { position:absolute; inset:0; z-index:3; overflow:hidden; }
-    .target { position:absolute; width:82px; height:82px; border:0; border-radius:50%; transform:translate(-50%,-50%); display:grid; place-items:center; font-size:42px; cursor:pointer; touch-action:manipulation; color:#fff; background: radial-gradient(circle at 35% 28%, #fff 0 7%, #77f4ff 8% 17%, #09b8ce 18% 42%, #08618b 43% 67%, #062f4d 68%); box-shadow: 0 0 0 5px rgba(255,255,255,.2), 0 0 38px rgba(62,229,255,.85), inset 0 0 18px rgba(255,255,255,.45); animation: bob 1.2s ease-in-out infinite alternate; }
-    .target::after { content:""; position:absolute; inset:-16px; border-radius:50%; border:2px solid rgba(145,244,255,.55); animation:ring 1.3s ease-out infinite; }
-    @keyframes bob { to { transform:translate(-50%,-50%) scale(1.08); } }
-    @keyframes ring { from { transform:scale(.75); opacity:.85; } to { transform:scale(1.35); opacity:0; } }
-
-    #crosshair { position:absolute; left:50%; top:50%; width:54px; height:54px; transform:translate(-50%,-50%); z-index:2; pointer-events:none; opacity:.55; }
-    #crosshair::before, #crosshair::after { content:""; position:absolute; background:rgba(255,255,255,.8); border-radius:2px; }
-    #crosshair::before { width:2px; height:54px; left:26px; }
-    #crosshair::after { width:54px; height:2px; top:26px; }
-
-    .bottom { position:absolute; left:12px; right:12px; bottom:max(14px, env(safe-area-inset-bottom)); z-index:5; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
-    button.control { min-height:46px; padding:0 18px; border-radius:14px; border:1px solid rgba(255,255,255,.2); background:rgba(8,12,24,.78); color:#fff; font-weight:700; font-size:15px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); cursor:pointer; }
-    button.control.primary { background:#fff; color:#08101f; }
-    button.control:disabled { opacity:.45; cursor:not-allowed; }
-
-    #message { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(90%, 430px); z-index:6; background:rgba(8,12,24,.88); border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:22px; text-align:center; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); box-shadow:0 24px 70px rgba(0,0,0,.35); }
-    #message h1 { margin:0 0 8px; font-size:28px; }
-    #message p { margin:0 0 16px; line-height:1.45; color:rgba(255,255,255,.78); }
-    #message .note { font-size:12px; opacity:.68; margin-top:10px; }
-    #message button { width:100%; min-height:52px; border:0; border-radius:14px; font-size:16px; font-weight:800; cursor:pointer; background:#fff; color:#08101f; }
-
-    #toast { position:absolute; left:50%; top:30%; transform:translate(-50%,-50%) scale(.85); z-index:7; font-weight:900; font-size:34px; opacity:0; pointer-events:none; text-shadow:0 2px 20px rgba(0,0,0,.5); transition:.18s ease; }
-    #toast.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
-
-    .hidden { display:none !important; }
-    @media (max-width: 420px) {
-      .pill { min-width:84px; padding:9px 12px; }
-      .pill strong { font-size:20px; }
-      .target { width:72px; height:72px; font-size:36px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .target, .target::after { animation:none; }
-      #toast { transition:none; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Finger AR Catch</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070a;color:white;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  #app{position:relative;width:100%;height:100%;background:#000}
+  video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  video{transform:scaleX(-1);background:#111}
+  canvas{z-index:2;pointer-events:none}
+  #hud{position:absolute;z-index:5;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+  .pill{background:rgba(8,12,18,.68);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(9px);border-radius:999px;padding:9px 13px;font-weight:800;font-size:14px}
+  #message{position:absolute;z-index:6;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(90%,520px);text-align:center;background:rgba(8,12,18,.7);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(9px);border-radius:14px;padding:10px 13px;font-size:14px}
+  #start,#end{position:absolute;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.68);backdrop-filter:blur(8px)}
+  #end{display:none}
+  .card{width:min(430px,100%);padding:22px;border-radius:22px;background:rgba(20,24,32,.96);border:1px solid rgba(255,255,255,.14);text-align:center}
+  h1{font-size:28px;margin:0 0 8px}
+  p{margin:8px 0 16px;line-height:1.45;color:#d1d6df}
+  button{width:100%;min-height:50px;border:0;border-radius:14px;background:#7ef2c6;color:#06281f;font-weight:900;font-size:17px;padding:12px 16px}
+  #status{min-height:20px;margin-top:12px;color:#bec5d1;font-size:13px}
+  .note{font-size:12px;color:#f1d78a;margin-top:12px}
+  .big{font-weight:950;font-size:52px;margin:4px 0}
+</style>
 </head>
 <body>
-  <div id="app">
-    <video id="camera" autoplay playsinline muted></video>
-    <div id="shade"></div>
+<div id="app">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="canvas"></canvas>
 
-    <div class="hud">
-      <div class="pill"><small>Score</small><strong id="score">0</strong></div>
-      <div class="pill" style="text-align:right"><small>Time</small><strong><span id="time">30</span>s</strong></div>
-    </div>
+  <div id="hud">
+    <div class="pill">🎯 <span id="score">0</span></div>
+    <div class="pill">⏱️ <span id="time">30</span>s</div>
+    <div class="pill" id="handState">✋ Searching…</div>
+  </div>
 
-    <div id="crosshair"></div>
-    <div id="playfield"></div>
-    <div id="toast">+1</div>
+  <div id="message">Show one hand to the camera. Your INDEX FINGER is the controller.</div>
 
-    <div id="message">
-      <h1>AR Target Hunt</h1>
-      <p>Point your camera around the room. Tap the glowing AR orb whenever it appears. Catch as many as you can in 30 seconds.</p>
-      <button id="startBtn" type="button">Start Camera & Game</button>
-      <div class="note">Camera access normally requires HTTPS or localhost. If camera access fails, the game will still run in demo mode.</div>
-    </div>
-
-    <div class="bottom">
-      <button id="switchBtn" class="control" type="button" disabled>Switch Camera</button>
-      <button id="restartBtn" class="control primary hidden" type="button">Play Again</button>
+  <div id="start">
+    <div class="card">
+      <h1>☝️ Finger AR Catch</h1>
+      <p>No screen touching during gameplay. Point your index finger at the glowing orb shown in the camera. When your fingertip reaches it, the orb is caught automatically.</p>
+      <button id="startBtn">Enable Camera & Start</button>
+      <div id="status">Hand-tracking model loads from the internet.</div>
+      <div class="note">The browser may require one initial tap to grant camera permission. After that, gameplay is touchless.</div>
     </div>
   </div>
 
-  <script>
-    (() => {
-      'use strict';
+  <div id="end">
+    <div class="card">
+      <h1>Game Over</h1>
+      <div class="big" id="finalScore">0</div>
+      <p>objects caught using your finger</p>
+      <button id="restartBtn">Play Again</button>
+    </div>
+  </div>
+</div>
 
-      const video = document.getElementById('camera');
-      const playfield = document.getElementById('playfield');
-      const scoreEl = document.getElementById('score');
-      const timeEl = document.getElementById('time');
-      const message = document.getElementById('message');
-      const startBtn = document.getElementById('startBtn');
-      const switchBtn = document.getElementById('switchBtn');
-      const restartBtn = document.getElementById('restartBtn');
-      const toast = document.getElementById('toast');
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script>
+(() => {
+  "use strict";
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const startPanel = document.getElementById("start");
+  const endPanel = document.getElementById("end");
+  const startBtn = document.getElementById("startBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const statusEl = document.getElementById("status");
+  const message = document.getElementById("message");
+  const scoreEl = document.getElementById("score");
+  const timeEl = document.getElementById("time");
+  const finalScore = document.getElementById("finalScore");
+  const handState = document.getElementById("handState");
 
-      let stream = null;
-      let facingMode = 'environment';
-      let score = 0;
-      let seconds = 30;
-      let running = false;
-      let timerId = null;
-      let spawnId = null;
-      let toastId = null;
-      let target = null;
+  let stream = null;
+  let hands = null;
+  let running = false;
+  let score = 0;
+  let remaining = 30;
+  let timer = null;
+  let raf = null;
+  let processing = false;
+  let latestLandmarks = null;
+  let target = {x:.5,y:.52,r:.075};
+  let touchingSince = 0;
+  let targetPulse = 0;
 
-      function randomBetween(min, max) {
-        return Math.random() * (max - min) + min;
-      }
+  const TAU = Math.PI * 2;
 
-      function clearTarget() {
-        if (target) {
-          target.remove();
-          target = null;
-        }
-      }
+  function fitCanvas(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round(rect.width*dpr);
+    canvas.height = Math.round(rect.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
 
-      function showToast(text) {
-        toast.textContent = text;
-        toast.classList.add('show');
-        clearTimeout(toastId);
-        toastId = setTimeout(() => toast.classList.remove('show'), 420);
-      }
+  function rand(min,max){ return min + Math.random()*(max-min); }
 
-      function spawnTarget() {
-        if (!running) return;
-        clearTarget();
+  function spawnTarget(){
+    target = {
+      x: rand(.16,.84),
+      y: rand(.20,.78),
+      r: rand(.060,.082)
+    };
+    touchingSince = 0;
+  }
 
-        const rect = playfield.getBoundingClientRect();
-        const marginX = Math.min(70, rect.width * 0.18);
-        const marginTop = 110;
-        const marginBottom = 120;
-        const usableW = Math.max(40, rect.width - marginX * 2);
-        const usableH = Math.max(40, rect.height - marginTop - marginBottom);
+  function dist(ax,ay,bx,by){
+    const dx=ax-bx, dy=ay-by;
+    return Math.sqrt(dx*dx+dy*dy);
+  }
 
-        const x = marginX + randomBetween(0, usableW);
-        const y = marginTop + randomBetween(0, usableH);
+  function drawTarget(w,h,now){
+    targetPulse = (Math.sin(now/180)+1)/2;
+    const x=target.x*w, y=target.y*h;
+    const r=target.r*Math.min(w,h);
+    const glow=r*(1.15+targetPulse*.18);
 
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'target';
-        btn.setAttribute('aria-label', 'Catch AR target');
-        btn.style.left = x + 'px';
-        btn.style.top = y + 'px';
-        btn.textContent = '✦';
+    ctx.save();
+    ctx.shadowColor="rgba(81,255,192,.95)";
+    ctx.shadowBlur=28;
+    const g=ctx.createRadialGradient(x-r*.25,y-r*.28,r*.08,x,y,glow);
+    g.addColorStop(0,"rgba(255,255,255,1)");
+    g.addColorStop(.18,"rgba(143,255,220,1)");
+    g.addColorStop(.55,"rgba(46,219,170,.96)");
+    g.addColorStop(1,"rgba(5,73,59,.25)");
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.strokeStyle="rgba(255,255,255,.9)";
+    ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(x,y,r*.98,0,TAU); ctx.stroke();
+    ctx.restore();
+  }
 
-        btn.addEventListener('click', () => {
-          if (!running) return;
-          score += 1;
-          scoreEl.textContent = String(score);
-          showToast('+1');
-          spawnTarget();
-        }, { once: true });
+  function drawFinger(w,h,landmarks,now){
+    if(!landmarks || !landmarks.length) return false;
 
-        playfield.appendChild(btn);
-        target = btn;
-      }
+    // Landmark 8 = index fingertip.
+    // Video is mirrored with CSS, so invert x for overlay alignment.
+    const tip = landmarks[8];
+    const pip = landmarks[6];
+    const tx=(1-tip.x)*w, ty=tip.y*h;
+    const px=(1-pip.x)*w, py=pip.y*h;
 
-      async function startCamera() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          video.style.display = 'none';
-          switchBtn.disabled = true;
-          return false;
-        }
+    ctx.save();
+    ctx.lineCap="round";
+    ctx.strokeStyle="rgba(255,255,255,.72)";
+    ctx.lineWidth=6;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(tx,ty); ctx.stroke();
 
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-          stream = null;
-        }
+    const rr=13 + Math.sin(now/100)*2;
+    ctx.fillStyle="rgba(255,255,255,.95)";
+    ctx.beginPath(); ctx.arc(tx,ty,rr,0,TAU); ctx.fill();
+    ctx.strokeStyle="rgba(126,242,198,1)";
+    ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(tx,ty,rr+6,0,TAU); ctx.stroke();
+    ctx.restore();
 
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
-            audio: false
-          });
-          video.srcObject = stream;
-          await video.play().catch(() => {});
-          video.style.display = 'block';
-          switchBtn.disabled = false;
-          return true;
-        } catch (err) {
-          video.srcObject = null;
-          video.style.display = 'none';
-          switchBtn.disabled = true;
-          return false;
-        }
-      }
+    const nx=tx/w, ny=ty/h;
+    const hit = dist(nx,ny,target.x,target.y) <= target.r*1.15;
 
-      function stopGame() {
-        running = false;
-        clearInterval(timerId);
-        clearInterval(spawnId);
-        timerId = null;
-        spawnId = null;
-        clearTarget();
-        restartBtn.classList.remove('hidden');
+    if(hit){
+      if(!touchingSince) touchingSince=performance.now();
+      const dwell=Math.min(1,(performance.now()-touchingSince)/180);
 
-        message.classList.remove('hidden');
-        message.innerHTML = `
-          <h1>Time's Up!</h1>
-          <p>Your score: <strong style="font-size:30px;color:#fff">${score}</strong></p>
-          <button id="insideRestart" type="button">Play Again</button>
-          <div class="note">This is a simple camera-overlay AR prototype. The next version can use real surface tracking / WebXR where supported.</div>
-        `;
-        document.getElementById('insideRestart').addEventListener('click', startGame);
-      }
+      ctx.save();
+      ctx.strokeStyle="rgba(255,229,111,.98)";
+      ctx.lineWidth=7;
+      ctx.beginPath();
+      ctx.arc(target.x*w,target.y*h,target.r*Math.min(w,h)*1.18,-Math.PI/2,-Math.PI/2+TAU*dwell);
+      ctx.stroke();
+      ctx.restore();
 
-      function startGame() {
-        clearInterval(timerId);
-        clearInterval(spawnId);
-        clearTarget();
-
-        score = 0;
-        seconds = 30;
-        running = true;
-        scoreEl.textContent = '0';
-        timeEl.textContent = '30';
-        message.classList.add('hidden');
-        restartBtn.classList.add('hidden');
+      if(dwell>=1){
+        score++;
+        scoreEl.textContent=score;
+        if(navigator.vibrate) navigator.vibrate(30);
         spawnTarget();
-
-        spawnId = setInterval(() => {
-          if (running) spawnTarget();
-        }, 1700);
-
-        timerId = setInterval(() => {
-          seconds -= 1;
-          timeEl.textContent = String(Math.max(0, seconds));
-          if (seconds <= 0) stopGame();
-        }, 1000);
       }
+    } else {
+      touchingSince=0;
+    }
+    return true;
+  }
 
-      startBtn.addEventListener('click', async () => {
-        startBtn.disabled = true;
-        startBtn.textContent = 'Starting…';
-        await startCamera();
-        startGame();
-      });
+  function render(now){
+    if(!running) return;
+    const rect=canvas.getBoundingClientRect();
+    const w=rect.width, h=rect.height;
+    ctx.clearRect(0,0,w,h);
 
-      switchBtn.addEventListener('click', async () => {
-        facingMode = facingMode === 'environment' ? 'user' : 'environment';
-        switchBtn.disabled = true;
-        await startCamera();
-        switchBtn.disabled = !stream;
-      });
+    drawTarget(w,h,now);
+    const hasHand=drawFinger(w,h,latestLandmarks,now);
 
-      restartBtn.addEventListener('click', startGame);
+    handState.textContent = hasHand ? "☝️ Finger found" : "✋ Searching…";
+    message.textContent = hasHand
+      ? "Move your INDEX FINGER onto the glowing orb — no screen touch."
+      : "Show one hand clearly to the camera.";
 
-      window.addEventListener('pagehide', () => {
-        if (stream) stream.getTracks().forEach(track => track.stop());
-        clearInterval(timerId);
-        clearInterval(spawnId);
-      });
-    })();
-  </script>
+    raf=requestAnimationFrame(render);
+  }
+
+  function onResults(results){
+    if(results.multiHandLandmarks && results.multiHandLandmarks.length){
+      latestLandmarks=results.multiHandLandmarks[0];
+    }else{
+      latestLandmarks=null;
+      touchingSince=0;
+    }
+  }
+
+  async function initHands(){
+    if(!window.Hands) throw new Error("Hand tracking library could not load.");
+    if(hands) return;
+    hands = new Hands({
+      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 0,
+      minDetectionConfidence: 0.55,
+      minTrackingConfidence: 0.55
+    });
+    hands.onResults(onResults);
+    await hands.initialize();
+  }
+
+  async function startCamera(){
+    if(stream){
+      stream.getTracks().forEach(t=>t.stop());
+      stream=null;
+    }
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{
+        facingMode:"user",
+        width:{ideal:640},
+        height:{ideal:480}
+      }
+    });
+    video.srcObject=stream;
+    await video.play();
+  }
+
+  async function inferenceLoop(){
+    if(!running) return;
+    if(video.readyState>=2 && hands && !processing){
+      processing=true;
+      try{
+        await hands.send({image:video});
+      }catch(e){
+        console.error(e);
+      }finally{
+        processing=false;
+      }
+    }
+    setTimeout(inferenceLoop, 33);
+  }
+
+  function stopGame(){
+    running=false;
+    clearInterval(timer);
+    timer=null;
+    cancelAnimationFrame(raf);
+    raf=null;
+    finalScore.textContent=score;
+    endPanel.style.display="flex";
+  }
+
+  function beginRound(){
+    score=0;
+    remaining=30;
+    scoreEl.textContent=score;
+    timeEl.textContent=remaining;
+    endPanel.style.display="none";
+    startPanel.style.display="none";
+    spawnTarget();
+    touchingSince=0;
+    latestLandmarks=null;
+    running=true;
+
+    timer=setInterval(()=>{
+      remaining--;
+      timeEl.textContent=remaining;
+      if(remaining<=0) stopGame();
+    },1000);
+
+    raf=requestAnimationFrame(render);
+    inferenceLoop();
+  }
+
+  async function boot(){
+    startBtn.disabled=true;
+    statusEl.textContent="Starting camera…";
+    try{
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        throw new Error("Camera API unavailable. Use HTTPS in Safari/Chrome.");
+      }
+      await startCamera();
+      statusEl.textContent="Loading hand tracker…";
+      await initHands();
+      statusEl.textContent="Ready.";
+      beginRound();
+    }catch(err){
+      console.error(err);
+      statusEl.textContent="Could not start: "+(err && err.message ? err.message : err);
+      startBtn.disabled=false;
+    }
+  }
+
+  startBtn.addEventListener("click",boot);
+  restartBtn.addEventListener("click",()=>{
+    endPanel.style.display="none";
+    beginRound();
+  });
+
+  window.addEventListener("resize",fitCanvas);
+  fitCanvas();
+})();
+</script>
 </body>
 </html>
