@@ -3,56 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>Finger AR Catch</title>
+<title>AR Creature Hunt — Touchless</title>
 <style>
+  :root{
+    --bg:#05070a; --fg:#fff; --muted:#c9d0dc; --accent:#79f2c0;
+  }
   *{box-sizing:border-box}
-  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070a;color:white;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   #app{position:relative;width:100%;height:100%;background:#000}
   video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  video{transform:scaleX(-1);background:#111}
+  video{background:#111}
   canvas{z-index:2;pointer-events:none}
-  #hud{position:absolute;z-index:5;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
-  .pill{background:rgba(8,12,18,.68);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(9px);border-radius:999px;padding:9px 13px;font-weight:800;font-size:14px}
-  #message{position:absolute;z-index:6;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(90%,520px);text-align:center;background:rgba(8,12,18,.7);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(9px);border-radius:14px;padding:10px 13px;font-size:14px}
-  #start,#end{position:absolute;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.68);backdrop-filter:blur(8px)}
+  #shade{position:absolute;inset:0;z-index:3;pointer-events:none;background:linear-gradient(to bottom,rgba(0,0,0,.38),transparent 28%,transparent 68%,rgba(0,0,0,.48))}
+  #hud{position:absolute;z-index:5;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:8px;justify-content:space-between;pointer-events:none}
+  .pill{background:rgba(8,12,18,.68);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);border-radius:999px;padding:9px 12px;font-weight:800;font-size:13px;white-space:nowrap}
+  #quest{position:absolute;z-index:5;left:50%;top:calc(58px + env(safe-area-inset-top));transform:translateX(-50%);width:min(92%,520px);text-align:center;background:rgba(8,12,18,.60);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);border-radius:14px;padding:9px 12px;font-size:13px;pointer-events:none}
+  #message{position:absolute;z-index:5;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(92%,520px);text-align:center;background:rgba(8,12,18,.68);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(9px);border-radius:15px;padding:10px 13px;font-size:14px;pointer-events:none}
+  #start,#end{position:absolute;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.70);backdrop-filter:blur(9px)}
   #end{display:none}
-  .card{width:min(430px,100%);padding:22px;border-radius:22px;background:rgba(20,24,32,.96);border:1px solid rgba(255,255,255,.14);text-align:center}
+  .card{width:min(450px,100%);padding:22px;border-radius:22px;background:rgba(20,24,32,.97);border:1px solid rgba(255,255,255,.14);text-align:center}
   h1{font-size:28px;margin:0 0 8px}
-  p{margin:8px 0 16px;line-height:1.45;color:#d1d6df}
-  button{width:100%;min-height:50px;border:0;border-radius:14px;background:#7ef2c6;color:#06281f;font-weight:900;font-size:17px;padding:12px 16px}
-  #status{min-height:20px;margin-top:12px;color:#bec5d1;font-size:13px}
-  .note{font-size:12px;color:#f1d78a;margin-top:12px}
-  .big{font-weight:950;font-size:52px;margin:4px 0}
+  p{margin:8px 0 16px;line-height:1.45;color:#d2d8e2}
+  button{width:100%;min-height:50px;border:0;border-radius:14px;background:var(--accent);color:#06271f;font-weight:900;font-size:17px;padding:12px 16px}
+  button:disabled{opacity:.55}
+  #status{min-height:20px;margin-top:12px;color:#c2c9d4;font-size:13px}
+  .note{font-size:12px;color:#f1d58a;margin-top:12px}
+  .big{font-weight:950;font-size:48px;margin:4px 0}
 </style>
 </head>
 <body>
 <div id="app">
   <video id="video" playsinline autoplay muted></video>
   <canvas id="canvas"></canvas>
+  <div id="shade"></div>
 
   <div id="hud">
-    <div class="pill">🎯 <span id="score">0</span></div>
-    <div class="pill">⏱️ <span id="time">30</span>s</div>
-    <div class="pill" id="handState">✋ Searching…</div>
+    <div class="pill">🪙 <span id="score">0</span></div>
+    <div class="pill">🧿 Orbs: <span id="orbs">12</span></div>
+    <div class="pill">⏱️ <span id="time">60</span>s</div>
   </div>
 
-  <div id="message">Show one hand to the camera. Your INDEX FINGER is the controller.</div>
+  <div id="quest">Find the creature • Pinch thumb + index to charge • Release toward it to throw</div>
+  <div id="message">Show your hand in the rear camera view.</div>
 
   <div id="start">
     <div class="card">
-      <h1>☝️ Finger AR Catch</h1>
-      <p>No screen touching during gameplay. Point your index finger at the glowing orb shown in the camera. When your fingertip reaches it, the orb is caught automatically.</p>
+      <h1>AR Creature Hunt</h1>
+      <p>Pokémon-Go-style camera hunt with an original creature. No screen touching during gameplay: pinch your thumb and index finger to charge an orb, then release to throw it at the creature.</p>
       <button id="startBtn">Enable Camera & Start</button>
-      <div id="status">Hand-tracking model loads from the internet.</div>
-      <div class="note">The browser may require one initial tap to grant camera permission. After that, gameplay is touchless.</div>
+      <div id="status">Rear camera + hand-tracking model required.</div>
+      <div class="note">Browser security still requires one initial tap to grant camera permission. After that, gameplay is touchless.</div>
     </div>
   </div>
 
   <div id="end">
     <div class="card">
-      <h1>Game Over</h1>
+      <h1>Hunt Complete</h1>
       <div class="big" id="finalScore">0</div>
-      <p>objects caught using your finger</p>
+      <p>creatures captured</p>
       <button id="restartBtn">Play Again</button>
     </div>
   </div>
@@ -62,6 +70,7 @@
 <script>
 (() => {
   "use strict";
+
   const video = document.getElementById("video");
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
@@ -72,176 +81,289 @@
   const statusEl = document.getElementById("status");
   const message = document.getElementById("message");
   const scoreEl = document.getElementById("score");
+  const orbsEl = document.getElementById("orbs");
   const timeEl = document.getElementById("time");
   const finalScore = document.getElementById("finalScore");
-  const handState = document.getElementById("handState");
 
-  let stream = null;
-  let hands = null;
-  let running = false;
-  let score = 0;
-  let remaining = 30;
-  let timer = null;
-  let raf = null;
-  let processing = false;
-  let latestLandmarks = null;
-  let target = {x:.5,y:.52,r:.075};
-  let touchingSince = 0;
-  let targetPulse = 0;
+  let stream=null, hands=null, processing=false, running=false;
+  let landmarks=null, score=0, orbs=12, remaining=60, timer=null, raf=null;
+  let creature={x:.57,y:.42,scale:1,hp:1,phase:0};
+  let orb=null, charging=false, charge=0, wasPinching=false, lastThrowAt=0;
+  let handTip=null, handThumb=null, handPalm=null;
+  let catchFlash=0, escapeFlash=0;
+  const TAU=Math.PI*2;
 
-  const TAU = Math.PI * 2;
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function rand(a,b){return a+Math.random()*(b-a)}
+  function dist(ax,ay,bx,by){const dx=ax-bx,dy=ay-by;return Math.hypot(dx,dy)}
 
   function fitCanvas(){
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.round(rect.width*dpr);
-    canvas.height = Math.round(rect.height*dpr);
+    const dpr=Math.min(devicePixelRatio||1,2);
+    const r=canvas.getBoundingClientRect();
+    canvas.width=Math.round(r.width*dpr);
+    canvas.height=Math.round(r.height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
 
-  function rand(min,max){ return min + Math.random()*(max-min); }
-
-  function spawnTarget(){
-    target = {
-      x: rand(.16,.84),
-      y: rand(.20,.78),
-      r: rand(.060,.082)
+  function spawnCreature(){
+    creature={
+      x:rand(.30,.72),
+      y:rand(.28,.54),
+      scale:rand(.86,1.12),
+      hp:1,
+      phase:rand(0,TAU)
     };
-    touchingSince = 0;
   }
 
-  function dist(ax,ay,bx,by){
-    const dx=ax-bx, dy=ay-by;
-    return Math.sqrt(dx*dx+dy*dy);
-  }
-
-  function drawTarget(w,h,now){
-    targetPulse = (Math.sin(now/180)+1)/2;
-    const x=target.x*w, y=target.y*h;
-    const r=target.r*Math.min(w,h);
-    const glow=r*(1.15+targetPulse*.18);
+  function drawCreature(w,h,now){
+    const bob=Math.sin(now/420+creature.phase)*8;
+    const x=creature.x*w, y=creature.y*h+bob;
+    const s=Math.min(w,h)*.12*creature.scale;
 
     ctx.save();
-    ctx.shadowColor="rgba(81,255,192,.95)";
-    ctx.shadowBlur=28;
-    const g=ctx.createRadialGradient(x-r*.25,y-r*.28,r*.08,x,y,glow);
-    g.addColorStop(0,"rgba(255,255,255,1)");
-    g.addColorStop(.18,"rgba(143,255,220,1)");
-    g.addColorStop(.55,"rgba(46,219,170,.96)");
-    g.addColorStop(1,"rgba(5,73,59,.25)");
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill();
-    ctx.shadowBlur=0;
-    ctx.strokeStyle="rgba(255,255,255,.9)";
-    ctx.lineWidth=3;
-    ctx.beginPath(); ctx.arc(x,y,r*.98,0,TAU); ctx.stroke();
-    ctx.restore();
-  }
+    ctx.translate(x,y);
 
-  function drawFinger(w,h,landmarks,now){
-    if(!landmarks || !landmarks.length) return false;
+    // soft ground shadow
+    ctx.fillStyle="rgba(0,0,0,.25)";
+    ctx.beginPath(); ctx.ellipse(0,s*.88,s*.68,s*.18,0,0,TAU); ctx.fill();
 
-    // Landmark 8 = index fingertip.
-    // Video is mirrored with CSS, so invert x for overlay alignment.
-    const tip = landmarks[8];
-    const pip = landmarks[6];
-    const tx=(1-tip.x)*w, ty=tip.y*h;
-    const px=(1-pip.x)*w, py=pip.y*h;
-
-    ctx.save();
+    // tail
+    ctx.strokeStyle="rgba(116,230,255,.95)";
+    ctx.lineWidth=s*.16;
     ctx.lineCap="round";
-    ctx.strokeStyle="rgba(255,255,255,.72)";
-    ctx.lineWidth=6;
-    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(tx,ty); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s*.38,s*.22); ctx.quadraticCurveTo(s*.95,s*.15,s*.82,-s*.36); ctx.stroke();
 
-    const rr=13 + Math.sin(now/100)*2;
-    ctx.fillStyle="rgba(255,255,255,.95)";
-    ctx.beginPath(); ctx.arc(tx,ty,rr,0,TAU); ctx.fill();
-    ctx.strokeStyle="rgba(126,242,198,1)";
+    // ears
+    ctx.fillStyle="#57d2ee";
+    ctx.beginPath(); ctx.moveTo(-s*.55,-s*.38); ctx.lineTo(-s*.33,-s*.98); ctx.lineTo(-s*.06,-s*.42); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s*.55,-s*.38); ctx.lineTo(s*.33,-s*.98); ctx.lineTo(s*.06,-s*.42); ctx.fill();
+
+    // body
+    const g=ctx.createRadialGradient(-s*.22,-s*.32,s*.08,0,0,s*.9);
+    g.addColorStop(0,"#e8feff");
+    g.addColorStop(.22,"#8ce9f7");
+    g.addColorStop(.72,"#3bb7d7");
+    g.addColorStop(1,"#17647d");
+    ctx.fillStyle=g;
+    ctx.shadowColor="rgba(96,231,255,.75)";
+    ctx.shadowBlur=18;
+    ctx.beginPath(); ctx.ellipse(0,0,s*.64,s*.78,0,0,TAU); ctx.fill();
+    ctx.shadowBlur=0;
+
+    // belly
+    ctx.fillStyle="rgba(255,255,255,.55)";
+    ctx.beginPath(); ctx.ellipse(0,s*.18,s*.30,s*.34,0,0,TAU); ctx.fill();
+
+    // eyes
+    for(const side of [-1,1]){
+      ctx.fillStyle="#07151b";
+      ctx.beginPath(); ctx.arc(side*s*.22,-s*.18,s*.09,0,TAU); ctx.fill();
+      ctx.fillStyle="#fff";
+      ctx.beginPath(); ctx.arc(side*s*.19,-s*.22,s*.025,0,TAU); ctx.fill();
+    }
+
+    // crest
+    ctx.fillStyle="#bdf8ff";
+    ctx.beginPath(); ctx.moveTo(-s*.14,-s*.70); ctx.lineTo(0,-s*1.06); ctx.lineTo(s*.16,-s*.69); ctx.fill();
+
+    // smile
+    ctx.strokeStyle="#0b3a47"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(0,-s*.02,s*.14,.15*Math.PI,.85*Math.PI); ctx.stroke();
+
+    // capture ring
+    const rr=s*.88 + Math.sin(now/220)*3;
+    ctx.strokeStyle="rgba(125,245,194,.92)";
     ctx.lineWidth=4;
-    ctx.beginPath(); ctx.arc(tx,ty,rr+6,0,TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,rr,0,TAU); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawHand(w,h,now){
+    if(!landmarks){ handTip=handThumb=handPalm=null; return false; }
+
+    // rear camera is NOT mirrored
+    const tip=landmarks[8], thumb=landmarks[4], palm=landmarks[9];
+    handTip={x:tip.x*w,y:tip.y*h};
+    handThumb={x:thumb.x*w,y:thumb.y*h};
+    handPalm={x:palm.x*w,y:palm.y*h};
+
+    const pinchDist=Math.hypot(handTip.x-handThumb.x,handTip.y-handThumb.y);
+    const palmScale=Math.max(55, Math.hypot((landmarks[5].x-landmarks[17].x)*w,(landmarks[5].y-landmarks[17].y)*h));
+    const pinching=pinchDist < palmScale*.42;
+
+    ctx.save();
+    // guide line
+    ctx.strokeStyle="rgba(255,255,255,.55)";
+    ctx.lineWidth=5; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(handThumb.x,handThumb.y); ctx.lineTo(handTip.x,handTip.y); ctx.stroke();
+
+    // fingertip marker
+    ctx.fillStyle=pinching?"rgba(255,225,105,.98)":"rgba(255,255,255,.98)";
+    ctx.beginPath(); ctx.arc(handTip.x,handTip.y,11,0,TAU); ctx.fill();
+    ctx.strokeStyle=pinching?"rgba(255,225,105,.98)":"rgba(121,242,192,.98)";
+    ctx.lineWidth=4; ctx.beginPath(); ctx.arc(handTip.x,handTip.y,18,0,TAU); ctx.stroke();
+
+    // thumb marker
+    ctx.fillStyle="rgba(255,255,255,.85)";
+    ctx.beginPath(); ctx.arc(handThumb.x,handThumb.y,8,0,TAU); ctx.fill();
     ctx.restore();
 
-    const nx=tx/w, ny=ty/h;
-    const hit = dist(nx,ny,target.x,target.y) <= target.r*1.15;
+    if(pinching && !wasPinching && !orb && orbs>0){
+      charging=true; charge=0;
+    }
 
-    if(hit){
-      if(!touchingSince) touchingSince=performance.now();
-      const dwell=Math.min(1,(performance.now()-touchingSince)/180);
-
+    if(pinching && charging && !orb){
+      charge=clamp(charge+.035,0,1);
+      const cx=(handTip.x+handThumb.x)/2, cy=(handTip.y+handThumb.y)/2;
       ctx.save();
-      ctx.strokeStyle="rgba(255,229,111,.98)";
-      ctx.lineWidth=7;
-      ctx.beginPath();
-      ctx.arc(target.x*w,target.y*h,target.r*Math.min(w,h)*1.18,-Math.PI/2,-Math.PI/2+TAU*dwell);
-      ctx.stroke();
+      ctx.strokeStyle="rgba(255,224,105,.95)";
+      ctx.lineWidth=6;
+      ctx.beginPath(); ctx.arc(cx,cy,24,-Math.PI/2,-Math.PI/2+TAU*charge); ctx.stroke();
+      ctx.fillStyle="rgba(255,245,180,.9)";
+      ctx.beginPath(); ctx.arc(cx,cy,8+8*charge,0,TAU); ctx.fill();
       ctx.restore();
+      message.textContent="Charging orb… release your pinch to throw!";
+    }
 
-      if(dwell>=1){
-        score++;
-        scoreEl.textContent=score;
-        if(navigator.vibrate) navigator.vibrate(30);
-        spawnTarget();
-      }
-    } else {
-      touchingSince=0;
+    if(!pinching && wasPinching && charging && !orb && orbs>0){
+      throwOrb(w,h);
+    }
+
+    wasPinching=pinching;
+
+    if(!charging && !orb){
+      message.textContent="Pinch thumb + index to charge, then release toward the creature.";
     }
     return true;
   }
 
+  function throwOrb(w,h){
+    charging=false;
+    if(!handTip || !handPalm || charge<.12) { charge=0; return; }
+
+    const startX=(handTip.x + (handThumb?handThumb.x:handTip.x))/2;
+    const startY=(handTip.y + (handThumb?handThumb.y:handTip.y))/2;
+
+    // Aim primarily from palm->fingertip direction, with mild attraction toward creature.
+    let vx=(handTip.x-handPalm.x)*.12;
+    let vy=(handTip.y-handPalm.y)*.12;
+    const tx=creature.x*w, ty=creature.y*h;
+    const toX=tx-startX, toY=ty-startY;
+    vx += toX*.018*(.4+charge);
+    vy += toY*.018*(.4+charge);
+
+    const speedBoost=.9+charge*1.6;
+    orb={x:startX,y:startY,vx:vx*speedBoost,vy:vy*speedBoost,r:10+charge*7,life:0,charge};
+    orbs--; orbsEl.textContent=orbs;
+    lastThrowAt=performance.now();
+    charge=0;
+  }
+
+  function drawOrb(w,h,now){
+    if(!orb) return;
+    orb.life++;
+    orb.x+=orb.vx;
+    orb.y+=orb.vy;
+    orb.vy+=.16; // mild gravity
+
+    ctx.save();
+    ctx.shadowColor="rgba(255,225,105,.95)";
+    ctx.shadowBlur=18;
+    const g=ctx.createRadialGradient(orb.x-orb.r*.25,orb.y-orb.r*.25,2,orb.x,orb.y,orb.r*1.4);
+    g.addColorStop(0,"#fff");
+    g.addColorStop(.25,"#fff6b8");
+    g.addColorStop(.72,"#ffd95d");
+    g.addColorStop(1,"rgba(255,146,52,.45)");
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(orb.x,orb.y,orb.r,0,TAU); ctx.fill();
+    ctx.restore();
+
+    const cx=creature.x*w, cy=creature.y*h;
+    const cr=Math.min(w,h)*.105*creature.scale;
+    if(dist(orb.x,orb.y,cx,cy)<cr+orb.r){
+      orb=null;
+      score++; scoreEl.textContent=score;
+      catchFlash=performance.now();
+      if(navigator.vibrate) navigator.vibrate([40,30,70]);
+      message.textContent="Captured! A new creature appeared.";
+      setTimeout(()=>{ if(running) spawnCreature(); },260);
+      return;
+    }
+
+    if(orb.x<-60 || orb.x>w+60 || orb.y<-60 || orb.y>h+60 || orb.life>150){
+      orb=null;
+      escapeFlash=performance.now();
+      message.textContent=orbs>0 ? "Missed! Pinch again and try another throw." : "No orbs left!";
+    }
+  }
+
+  function drawEffects(w,h,now){
+    if(now-catchFlash<450){
+      const p=(now-catchFlash)/450;
+      ctx.save();
+      ctx.strokeStyle=`rgba(121,242,192,${1-p})`;
+      ctx.lineWidth=8*(1-p)+2;
+      ctx.beginPath();
+      ctx.arc(creature.x*w,creature.y*h,30+p*110,0,TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if(now-escapeFlash<250){
+      ctx.save();
+      ctx.fillStyle=`rgba(255,90,90,${.12*(1-(now-escapeFlash)/250)})`;
+      ctx.fillRect(0,0,w,h);
+      ctx.restore();
+    }
+  }
+
   function render(now){
     if(!running) return;
-    const rect=canvas.getBoundingClientRect();
-    const w=rect.width, h=rect.height;
+    const r=canvas.getBoundingClientRect(), w=r.width, h=r.height;
     ctx.clearRect(0,0,w,h);
 
-    drawTarget(w,h,now);
-    const hasHand=drawFinger(w,h,latestLandmarks,now);
+    drawCreature(w,h,now);
+    const hasHand=drawHand(w,h,now);
+    drawOrb(w,h,now);
+    drawEffects(w,h,now);
 
-    handState.textContent = hasHand ? "☝️ Finger found" : "✋ Searching…";
-    message.textContent = hasHand
-      ? "Move your INDEX FINGER onto the glowing orb — no screen touch."
-      : "Show one hand clearly to the camera.";
+    if(!hasHand){
+      message.textContent="Show one hand clearly to the rear camera.";
+      wasPinching=false;
+      charging=false;
+      charge=0;
+    }
 
     raf=requestAnimationFrame(render);
   }
 
   function onResults(results){
-    if(results.multiHandLandmarks && results.multiHandLandmarks.length){
-      latestLandmarks=results.multiHandLandmarks[0];
-    }else{
-      latestLandmarks=null;
-      touchingSince=0;
-    }
+    landmarks=(results.multiHandLandmarks && results.multiHandLandmarks.length)
+      ? results.multiHandLandmarks[0] : null;
   }
 
   async function initHands(){
-    if(!window.Hands) throw new Error("Hand tracking library could not load.");
+    if(!window.Hands) throw new Error("Hand-tracking library could not load.");
     if(hands) return;
-    hands = new Hands({
-      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
+    hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
     hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 0,
-      minDetectionConfidence: 0.55,
-      minTrackingConfidence: 0.55
+      maxNumHands:1,
+      modelComplexity:0,
+      minDetectionConfidence:.55,
+      minTrackingConfidence:.55
     });
     hands.onResults(onResults);
     await hands.initialize();
   }
 
   async function startCamera(){
-    if(stream){
-      stream.getTracks().forEach(t=>t.stop());
-      stream=null;
-    }
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
     stream=await navigator.mediaDevices.getUserMedia({
       audio:false,
       video:{
-        facingMode:"user",
-        width:{ideal:640},
-        height:{ideal:480}
+        facingMode:{ideal:"environment"},
+        width:{ideal:1280},
+        height:{ideal:720}
       }
     });
     video.srcObject=stream;
@@ -252,43 +374,34 @@
     if(!running) return;
     if(video.readyState>=2 && hands && !processing){
       processing=true;
-      try{
-        await hands.send({image:video});
-      }catch(e){
-        console.error(e);
-      }finally{
-        processing=false;
-      }
+      try{ await hands.send({image:video}); }
+      catch(e){ console.error(e); }
+      finally{ processing=false; }
     }
-    setTimeout(inferenceLoop, 33);
+    setTimeout(inferenceLoop,33);
   }
 
   function stopGame(){
     running=false;
-    clearInterval(timer);
-    timer=null;
-    cancelAnimationFrame(raf);
-    raf=null;
+    clearInterval(timer); timer=null;
+    cancelAnimationFrame(raf); raf=null;
     finalScore.textContent=score;
     endPanel.style.display="flex";
   }
 
   function beginRound(){
-    score=0;
-    remaining=30;
-    scoreEl.textContent=score;
-    timeEl.textContent=remaining;
-    endPanel.style.display="none";
+    score=0; orbs=12; remaining=60;
+    scoreEl.textContent=score; orbsEl.textContent=orbs; timeEl.textContent=remaining;
+    orb=null; charging=false; wasPinching=false; charge=0; landmarks=null;
+    spawnCreature();
     startPanel.style.display="none";
-    spawnTarget();
-    touchingSince=0;
-    latestLandmarks=null;
+    endPanel.style.display="none";
     running=true;
 
     timer=setInterval(()=>{
       remaining--;
       timeEl.textContent=remaining;
-      if(remaining<=0) stopGame();
+      if(remaining<=0 || (orbs<=0 && !orb)) stopGame();
     },1000);
 
     raf=requestAnimationFrame(render);
@@ -297,19 +410,19 @@
 
   async function boot(){
     startBtn.disabled=true;
-    statusEl.textContent="Starting camera…";
     try{
       if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-        throw new Error("Camera API unavailable. Use HTTPS in Safari/Chrome.");
+        throw new Error("Camera API unavailable. Open through HTTPS in Safari/Chrome.");
       }
+      statusEl.textContent="Starting rear camera…";
       await startCamera();
-      statusEl.textContent="Loading hand tracker…";
+      statusEl.textContent="Loading hand tracking…";
       await initHands();
       statusEl.textContent="Ready.";
       beginRound();
     }catch(err){
       console.error(err);
-      statusEl.textContent="Could not start: "+(err && err.message ? err.message : err);
+      statusEl.textContent="Could not start: "+(err?.message||err);
       startBtn.disabled=false;
     }
   }
@@ -319,7 +432,6 @@
     endPanel.style.display="none";
     beginRound();
   });
-
   window.addEventListener("resize",fitCanvas);
   fitCanvas();
 })();
