@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>AR Target Hunt</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: #05070d; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; overflow: hidden; }
+    body { color: #fff; }
+    #app { position: relative; width: 100%; height: 100%; min-height: 100dvh; background: radial-gradient(circle at 50% 20%, #1a2544, #05070d 65%); }
+    #camera { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #05070d; }
+    #shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0,0,0,.45), transparent 22%, transparent 74%, rgba(0,0,0,.55)); }
+
+    .hud { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; gap: 10px; justify-content: space-between; z-index: 4; pointer-events: none; }
+    .pill { background: rgba(8,12,24,.72); border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; padding: 10px 14px; min-width: 96px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    .pill small { display:block; opacity:.7; font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+    .pill strong { display:block; font-size:22px; line-height:1.05; margin-top:2px; }
+
+    #playfield { position:absolute; inset:0; z-index:3; overflow:hidden; }
+    .target { position:absolute; width:82px; height:82px; border:0; border-radius:50%; transform:translate(-50%,-50%); display:grid; place-items:center; font-size:42px; cursor:pointer; touch-action:manipulation; color:#fff; background: radial-gradient(circle at 35% 28%, #fff 0 7%, #77f4ff 8% 17%, #09b8ce 18% 42%, #08618b 43% 67%, #062f4d 68%); box-shadow: 0 0 0 5px rgba(255,255,255,.2), 0 0 38px rgba(62,229,255,.85), inset 0 0 18px rgba(255,255,255,.45); animation: bob 1.2s ease-in-out infinite alternate; }
+    .target::after { content:""; position:absolute; inset:-16px; border-radius:50%; border:2px solid rgba(145,244,255,.55); animation:ring 1.3s ease-out infinite; }
+    @keyframes bob { to { transform:translate(-50%,-50%) scale(1.08); } }
+    @keyframes ring { from { transform:scale(.75); opacity:.85; } to { transform:scale(1.35); opacity:0; } }
+
+    #crosshair { position:absolute; left:50%; top:50%; width:54px; height:54px; transform:translate(-50%,-50%); z-index:2; pointer-events:none; opacity:.55; }
+    #crosshair::before, #crosshair::after { content:""; position:absolute; background:rgba(255,255,255,.8); border-radius:2px; }
+    #crosshair::before { width:2px; height:54px; left:26px; }
+    #crosshair::after { width:54px; height:2px; top:26px; }
+
+    .bottom { position:absolute; left:12px; right:12px; bottom:max(14px, env(safe-area-inset-bottom)); z-index:5; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+    button.control { min-height:46px; padding:0 18px; border-radius:14px; border:1px solid rgba(255,255,255,.2); background:rgba(8,12,24,.78); color:#fff; font-weight:700; font-size:15px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); cursor:pointer; }
+    button.control.primary { background:#fff; color:#08101f; }
+    button.control:disabled { opacity:.45; cursor:not-allowed; }
+
+    #message { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(90%, 430px); z-index:6; background:rgba(8,12,24,.88); border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:22px; text-align:center; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); box-shadow:0 24px 70px rgba(0,0,0,.35); }
+    #message h1 { margin:0 0 8px; font-size:28px; }
+    #message p { margin:0 0 16px; line-height:1.45; color:rgba(255,255,255,.78); }
+    #message .note { font-size:12px; opacity:.68; margin-top:10px; }
+    #message button { width:100%; min-height:52px; border:0; border-radius:14px; font-size:16px; font-weight:800; cursor:pointer; background:#fff; color:#08101f; }
+
+    #toast { position:absolute; left:50%; top:30%; transform:translate(-50%,-50%) scale(.85); z-index:7; font-weight:900; font-size:34px; opacity:0; pointer-events:none; text-shadow:0 2px 20px rgba(0,0,0,.5); transition:.18s ease; }
+    #toast.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+
+    .hidden { display:none !important; }
+    @media (max-width: 420px) {
+      .pill { min-width:84px; padding:9px 12px; }
+      .pill strong { font-size:20px; }
+      .target { width:72px; height:72px; font-size:36px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .target, .target::after { animation:none; }
+      #toast { transition:none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <video id="camera" autoplay playsinline muted></video>
+    <div id="shade"></div>
+
+    <div class="hud">
+      <div class="pill"><small>Score</small><strong id="score">0</strong></div>
+      <div class="pill" style="text-align:right"><small>Time</small><strong><span id="time">30</span>s</strong></div>
+    </div>
+
+    <div id="crosshair"></div>
+    <div id="playfield"></div>
+    <div id="toast">+1</div>
+
+    <div id="message">
+      <h1>AR Target Hunt</h1>
+      <p>Point your camera around the room. Tap the glowing AR orb whenever it appears. Catch as many as you can in 30 seconds.</p>
+      <button id="startBtn" type="button">Start Camera & Game</button>
+      <div class="note">Camera access normally requires HTTPS or localhost. If camera access fails, the game will still run in demo mode.</div>
+    </div>
+
+    <div class="bottom">
+      <button id="switchBtn" class="control" type="button" disabled>Switch Camera</button>
+      <button id="restartBtn" class="control primary hidden" type="button">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const video = document.getElementById('camera');
+      const playfield = document.getElementById('playfield');
+      const scoreEl = document.getElementById('score');
+      const timeEl = document.getElementById('time');
+      const message = document.getElementById('message');
+      const startBtn = document.getElementById('startBtn');
+      const switchBtn = document.getElementById('switchBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const toast = document.getElementById('toast');
+
+      let stream = null;
+      let facingMode = 'environment';
+      let score = 0;
+      let seconds = 30;
+      let running = false;
+      let timerId = null;
+      let spawnId = null;
+      let toastId = null;
+      let target = null;
+
+      function randomBetween(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      function clearTarget() {
+        if (target) {
+          target.remove();
+          target = null;
+        }
+      }
+
+      function showToast(text) {
+        toast.textContent = text;
+        toast.classList.add('show');
+        clearTimeout(toastId);
+        toastId = setTimeout(() => toast.classList.remove('show'), 420);
+      }
+
+      function spawnTarget() {
+        if (!running) return;
+        clearTarget();
+
+        const rect = playfield.getBoundingClientRect();
+        const marginX = Math.min(70, rect.width * 0.18);
+        const marginTop = 110;
+        const marginBottom = 120;
+        const usableW = Math.max(40, rect.width - marginX * 2);
+        const usableH = Math.max(40, rect.height - marginTop - marginBottom);
+
+        const x = marginX + randomBetween(0, usableW);
+        const y = marginTop + randomBetween(0, usableH);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'target';
+        btn.setAttribute('aria-label', 'Catch AR target');
+        btn.style.left = x + 'px';
+        btn.style.top = y + 'px';
+        btn.textContent = '✦';
+
+        btn.addEventListener('click', () => {
+          if (!running) return;
+          score += 1;
+          scoreEl.textContent = String(score);
+          showToast('+1');
+          spawnTarget();
+        }, { once: true });
+
+        playfield.appendChild(btn);
+        target = btn;
+      }
+
+      async function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          video.style.display = 'none';
+          switchBtn.disabled = true;
+          return false;
+        }
+
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          stream = null;
+        }
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+          });
+          video.srcObject = stream;
+          await video.play().catch(() => {});
+          video.style.display = 'block';
+          switchBtn.disabled = false;
+          return true;
+        } catch (err) {
+          video.srcObject = null;
+          video.style.display = 'none';
+          switchBtn.disabled = true;
+          return false;
+        }
+      }
+
+      function stopGame() {
+        running = false;
+        clearInterval(timerId);
+        clearInterval(spawnId);
+        timerId = null;
+        spawnId = null;
+        clearTarget();
+        restartBtn.classList.remove('hidden');
+
+        message.classList.remove('hidden');
+        message.innerHTML = `
+          <h1>Time's Up!</h1>
+          <p>Your score: <strong style="font-size:30px;color:#fff">${score}</strong></p>
+          <button id="insideRestart" type="button">Play Again</button>
+          <div class="note">This is a simple camera-overlay AR prototype. The next version can use real surface tracking / WebXR where supported.</div>
+        `;
+        document.getElementById('insideRestart').addEventListener('click', startGame);
+      }
+
+      function startGame() {
+        clearInterval(timerId);
+        clearInterval(spawnId);
+        clearTarget();
+
+        score = 0;
+        seconds = 30;
+        running = true;
+        scoreEl.textContent = '0';
+        timeEl.textContent = '30';
+        message.classList.add('hidden');
+        restartBtn.classList.add('hidden');
+        spawnTarget();
+
+        spawnId = setInterval(() => {
+          if (running) spawnTarget();
+        }, 1700);
+
+        timerId = setInterval(() => {
+          seconds -= 1;
+          timeEl.textContent = String(Math.max(0, seconds));
+          if (seconds <= 0) stopGame();
+        }, 1000);
+      }
+
+      startBtn.addEventListener('click', async () => {
+        startBtn.disabled = true;
+        startBtn.textContent = 'Starting…';
+        await startCamera();
+        startGame();
+      });
+
+      switchBtn.addEventListener('click', async () => {
+        facingMode = facingMode === 'environment' ? 'user' : 'environment';
+        switchBtn.disabled = true;
+        await startCamera();
+        switchBtn.disabled = !stream;
+      });
+
+      restartBtn.addEventListener('click', startGame);
+
+      window.addEventListener('pagehide', () => {
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        clearInterval(timerId);
+        clearInterval(spawnId);
+      });
+    })();
+  </script>
+</body>
+</html>
